@@ -18,6 +18,8 @@ Regress both PLTR and NVDA daily returns on QQQ returns using 63-day rolling OLS
 
 **Conclusion: the co-movement is entirely shared QQQ beta.** Both stocks have nearly identical betas (~1.53), meaning they amplify Nasdaq moves by the same factor. Once that exposure is stripped out, residual correlation drops to -0.07 with an R² of 0.5% — no meaningful idiosyncratic co-movement.
 
+Worth noting: PLTR's beta at 1.53 is historically elevated for that name. The correlation with NVDA appeared *because* PLTR's beta has drifted up into NVDA's range as the market reprices it as an AI momentum stock — a relatively recent phenomenon. The actual story isn't that PLTR and NVDA are linked, but that PLTR has been re-categorized by the market into the same high-beta tech/AI bucket that NVDA already occupied.
+
 A 7-day rolling residual correlation was also computed. It spikes occasionally (up to ~0.75), but these spikes are not statistically significant — with n=7 the critical value for p=0.05 is ~0.75, and after accounting for multiple overlapping windows, nothing survives. The 7-day line oscillates symmetrically around zero with no persistent bias, consistent with noise around a true correlation of zero.
 
 The 63-day window provides much stronger evidence: with n=63, correlations as low as ~0.25 would be detectable, yet the line stays in a tight band around zero. This is evidence of absence rather than absence of evidence.
