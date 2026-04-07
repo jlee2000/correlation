@@ -36,3 +36,24 @@ def compute_rolling_beta(
         model = sm.OLS(y, X).fit()
         betas.iloc[i] = model.params[1]
     return betas
+
+
+def compute_residuals(
+    asset_returns: pd.Series,
+    market_returns: pd.Series,
+    window: int,
+) -> pd.Series:
+    """Rolling-window OLS residuals (last-day residual from each trailing window).
+
+    For day i (i >= window-1), fits OLS on the trailing window, then
+    residual[i] = asset_returns[i] - predicted[i]. First (window - 1) values are NaN.
+    """
+    n = len(asset_returns)
+    residuals = pd.Series(np.nan, index=asset_returns.index, dtype=float)
+    for i in range(window - 1, n):
+        y = asset_returns.iloc[i - window + 1 : i + 1].values
+        x = market_returns.iloc[i - window + 1 : i + 1].values
+        X = sm.add_constant(x)
+        model = sm.OLS(y, X).fit()
+        residuals.iloc[i] = model.resid[-1]
+    return residuals
