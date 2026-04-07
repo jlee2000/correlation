@@ -57,3 +57,32 @@ def compute_residuals(
         model = sm.OLS(y, X).fit()
         residuals.iloc[i] = model.resid[-1]
     return residuals
+
+
+def compute_rolling_residual_correlation(
+    resid_a: pd.Series,
+    resid_b: pd.Series,
+    window: int,
+) -> pd.Series:
+    """Rolling Pearson correlation of two residual series."""
+    return compute_rolling_correlation(resid_a, resid_b, window)
+
+
+def compute_residual_stats(
+    resid_a: pd.Series,
+    resid_b: pd.Series,
+) -> dict:
+    """OLS regression of resid_a on resid_b. Returns R², slope, intercept.
+
+    NaN values are dropped before fitting.
+    """
+    mask = resid_a.notna() & resid_b.notna()
+    y = resid_a[mask].values
+    x = resid_b[mask].values
+    X = sm.add_constant(x)
+    model = sm.OLS(y, X).fit()
+    return {
+        "r_squared": model.rsquared,
+        "slope": model.params[1],
+        "intercept": model.params[0],
+    }

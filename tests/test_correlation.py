@@ -5,9 +5,11 @@ import pandas as pd
 import pytest
 
 from correlation.analysis import (
+    compute_residual_stats,
     compute_residuals,
     compute_rolling_beta,
     compute_rolling_correlation,
+    compute_rolling_residual_correlation,
 )
 
 # ---------------------------------------------------------------------------
@@ -145,3 +147,75 @@ class TestComputeResiduals:
         result = compute_residuals(asset, market, WINDOW)
         assert len(result) == SERIES_LEN
         assert result.dtype == np.float64
+
+
+# ---------------------------------------------------------------------------
+# compute_rolling_residual_correlation
+# ---------------------------------------------------------------------------
+
+
+class TestComputeRollingResidualCorrelation:
+    def test_delegates_correctly(self):
+        rng = np.random.default_rng(11)
+        resid_a = pd.Series(rng.standard_normal(SERIES_LEN))
+        resid_b = pd.Series(rng.standard_normal(SERIES_LEN))
+        result = compute_rolling_residual_correlation(resid_a, resid_b, WINDOW)
+        expected = compute_rolling_correlation(resid_a, resid_b, WINDOW)
+        pd.testing.assert_series_equal(result, expected)
+
+    def test_output_shape_dtype(self):
+        rng = np.random.default_rng(12)
+        resid_a = pd.Series(rng.standard_normal(SERIES_LEN))
+        resid_b = pd.Series(rng.standard_normal(SERIES_LEN))
+        result = compute_rolling_residual_correlation(resid_a, resid_b, WINDOW)
+        assert len(result) == SERIES_LEN
+        assert result.dtype == np.float64
+
+    def test_nan_count_with_leading_nans(self):
+        rng = np.random.default_rng(13)
+        resid_a = pd.Series(rng.standard_normal(SERIES_LEN))
+        resid_b = pd.Series(rng.standard_normal(SERIES_LEN))
+        resid_a.iloc[:5] = np.nan
+        resid_b.iloc[:5] = np.nan
+        result = compute_rolling_residual_correlation(resid_a, resid_b, WINDOW)
+        assert result.iloc[: 5 + WINDOW - 1].isna().all()
+
+
+# ---------------------------------------------------------------------------
+# compute_residual_stats
+# ---------------------------------------------------------------------------
+
+
+class TestComputeResidualStats:
+    def test_keys(self):
+        rng = np.random.default_rng(14)
+        a = pd.Series(rng.standard_normal(50))
+        b = pd.Series(rng.standard_normal(50))
+        result = compute_residual_stats(a, b)
+        assert set(result.keys()) == {"r_squared", "slope", "intercept"}
+
+    def test_perfect_correlation(self):
+        rng = np.random.default_rng(15)
+        b = pd.Series(rng.standard_normal(50))
+        a = 2.0 * b + 1.0
+        result = compute_residual_stats(a, b)
+        assert abs(result["r_squared"] - 1.0) < 1e-10
+        assert abs(result["slope"] - 2.0) < 1e-10
+        assert abs(result["intercept"] - 1.0) < 1e-10
+
+    def test_no_correlation(self):
+        rng = np.random.default_rng(16)
+        a = pd.Series(rng.standard_normal(200))
+        b = pd.Series(rng.standard_normal(200))
+        result = compute_residual_stats(a, b)
+        assert result["r_squared"] < 0.3
+
+    def test_handles_nans(self):
+        rng = np.random.default_rng(17)
+        a = pd.Series(rng.standard_normal(50))
+        b = pd.Series(rng.standard_normal(50))
+        a.iloc[:10] = np.nan
+        b.iloc[5:15] = np.nan
+        result = compute_residual_stats(a, b)
+        assert "r_squared" in result
+        assert np.isfinite(result["r_squared"])
