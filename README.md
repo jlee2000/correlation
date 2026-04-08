@@ -1,34 +1,45 @@
 # correlation
 
-Investigating whether PLTR and NVDA have genuine pairwise correlation or if their recent co-movement is just shared QQQ beta exposure.
+A toolkit for testing whether two stocks have genuine pairwise correlation or if their co-movement is just shared exposure to a common factor (e.g. QQQ). Given any pair of tickers and a market factor, it strips out the factor via rolling OLS regression and checks whether the residuals are still correlated.
 
-## Approach
+## How it works
 
-Regress both PLTR and NVDA daily returns on QQQ returns using 63-day rolling OLS windows, extract the residuals (the part of each stock's return not explained by QQQ), then compute rolling correlation of those residuals. If residual correlation is near zero, the co-movement is entirely shared market factor. If elevated, there's genuine pairwise signal.
+1. Pull daily close prices via yfinance
+2. Compute rolling pairwise correlation (raw)
+3. Compute rolling OLS beta to the market factor for each stock
+4. Regress both stocks on the market factor, extract residuals
+5. Compute rolling correlation of the residuals — if near zero, the co-movement is entirely shared factor exposure
 
-## Findings (Apr 2026, trailing 63-day window)
+## Usage
 
-| Metric | Value |
-|--------|-------|
-| Raw Pairwise Correlation | 0.365 |
-| PLTR Beta to QQQ | 1.526 |
-| NVDA Beta to QQQ | 1.531 |
-| Residual Correlation (63d) | -0.072 |
-| Residual R² | 0.005 |
+The analytical functions in `correlation/analysis.py` are ticker-agnostic. To analyze a new pair, create a notebook in `notebooks/` and swap in your tickers:
 
-**Conclusion: the co-movement is entirely shared QQQ beta.** Both stocks have nearly identical betas (~1.53), meaning they amplify Nasdaq moves by the same factor. Once that exposure is stripped out, residual correlation drops to -0.07 with an R² of 0.5% — no meaningful idiosyncratic co-movement.
+```python
+from correlation.analysis import (
+    compute_rolling_correlation,
+    compute_rolling_beta,
+    compute_residuals,
+    compute_rolling_residual_correlation,
+    compute_residual_stats,
+)
 
-The more interesting finding is in the rolling beta chart. PLTR has been a high-beta name for most of its public life — its longer-run beta sits around 1.7-1.9 depending on source and window. During the peak AI frenzy in late 2025 / early 2026, PLTR's beta ran up to ~2.5, and has since pulled back to ~1.53, which is actually *below* its own longer-run average. It's not converging with NVDA from below — it overshot and is now passing back through NVDA's range on the way down toward its own mean. The apparent pairwise linkage is a transient crossing point, not a structural relationship. As PLTR's beta continues reverting toward ~1.7-1.9, the raw correlation with NVDA should weaken even though nothing fundamental changed between the two companies.
+tickers = ["META", "AAPL", "QQQ"]  # [stock_a, stock_b, factor]
+data = yf.download(tickers, period="1y")["Close"]
+returns = data.pct_change().dropna()
+```
 
-A 7-day rolling residual correlation was also computed. It spikes occasionally (up to ~0.75), but these spikes are not statistically significant — with n=7 the critical value for p=0.05 is ~0.75, and after accounting for multiple overlapping windows, nothing survives. The 7-day line oscillates symmetrically around zero with no persistent bias, consistent with noise around a true correlation of zero.
+See `notebooks/pltr_nvda_correlation.ipynb` for a complete example.
 
-The 63-day window provides much stronger evidence: with n=63, correlations as low as ~0.25 would be detectable, yet the line stays in a tight band around zero. This is evidence of absence rather than absence of evidence.
+## Analyses
+
+- [NVDA vs PLTR](analysis/nvda_pltr.md) — co-movement is entirely shared QQQ beta; transient beta overlap, not structural linkage
 
 ## Structure
 
 - `correlation/analysis.py` — reusable analytical functions (rolling correlation, rolling beta, residual computation, residual stats)
 - `tests/test_correlation.py` — 22 pytest tests covering edge cases, known outputs, NaN handling, and shape/dtype expectations
-- `notebooks/pltr_nvda_correlation.ipynb` — full analysis with charts (not tracked in git)
+- `notebooks/` — analysis notebooks (not tracked in git)
+- `analysis/` — writeups and findings for each pair analyzed
 
 ## Setup
 
@@ -36,8 +47,14 @@ The 63-day window provides much stronger evidence: with n=63, correlations as lo
 pip install -e ".[dev]"
 ```
 
-Run the notebook:
+Run notebooks:
 
 ```
 jupyter lab notebooks/
+```
+
+Run tests:
+
+```
+pytest -v
 ```
